@@ -8,8 +8,13 @@
 
 #define MAX_QUEUE_SIZE 100
 
+typedef struct Task{
+    void (*task_function)(void*);
+    void* arg;
+} Task;
+
 typedef struct {
-    int items[MAX_QUEUE_SIZE];
+    Task tasks[MAX_QUEUE_SIZE];
     int front;
     int rear;
     pthread_mutex_t queue_lock;
@@ -18,8 +23,8 @@ typedef struct {
 
 Queue* create_queue();
 bool is_empty(Queue* queue);
-void enqueue(Queue* queue, int item);
-int dequeue(Queue* queue);
+void enqueue(Queue* queue, Task item);
+Task dequeue(Queue* queue);
 void destroy_queue(Queue* queue);
 
 #endif

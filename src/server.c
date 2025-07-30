@@ -3,60 +3,135 @@
 #include <string.h>
 #include <unistd.h>
 #include <netinet/in.h>
-#include <arpa/inet.h> 
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include "./src/headers/safe_queue.h"
 
 #define PORT 8080
 #define BACKLOG 5
 
-int main() {
-    int sockfd, newsockfd;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0); // socket returns a file descriptor. AF_INET is for IPv4, SOCK_STREAM is for TCP. 0 is for default protocol.
-    if (sockfd < 0) {
+int get_socket();
+void start_server(int sockfd);
+int get_client(int sockfd);
+void client_handler(int client_fd);
+void close_client(int client_fd);
+void close_server(int sockfd);
+
+int sockfd;
+int main()
+{
+    Queue *queue = create_queue();
+    int client_fd = -1;
+    sockfd = get_socket();
+    start_server(sockfd);
+
+    for (;;)
+    {
+        client_fd = get_client(sockfd);
+        if (client_fd < 0)
+        {
+            continue;
+        }
+    }
+}
+
+int get_socket()
+{
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0); // socket returns a file descriptor. AF_INET is for IPv4, SOCK_STREAM is for TCP. 0 is for default protocol.
+    if (sockfd < 0)
+    {
         perror("Error opening socket");
         exit(EXIT_FAILURE);
     }
+    return sockfd;
+}
 
+void start_server(int sockfd)
+{
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT);
     addr.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0){
+    if (bind(sockfd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+    {
         perror("Error on binding");
         close(sockfd);
         exit(EXIT_FAILURE);
     }
-    if (listen(sockfd, BACKLOG) < 0){
+    if (listen(sockfd, BACKLOG) < 0)
+    {
         perror("Error on listen");
         close(sockfd);
         exit(EXIT_FAILURE);
     }
-    printf("Server is listening on port %d...\n", PORT);
+    char *server_ip = inet_ntoa(addr.sin_addr);
+    printf("Server is listening on port %d. Ip: %s...\n", PORT, server_ip);
+}
 
-    for(;;){
-        struct sockaddr_in client_addr;
-        socklen_t client_len = sizeof(client_addr);
-        int client_fd = accept(sockfd, (struct sockaddr *)&client_addr, &client_len);
+int get_client(int sockfd)
+{
+    struct sockaddr_in client_addr;
+    socklen_t client_len = sizeof(client_addr);
+    int client_fd = accept(sockfd, (struct sockaddr *)&client_addr, &client_len);
 
-        if (client_fd < 0) {
-            perror("Error on accept");
-            close(sockfd);
-            continue;
+    if (client_fd < 0)
+    {
+        perror("Error on accept");
+        close(sockfd);
+        return -1;
+    }
+
+    char *client_ip = inet_ntoa(client_addr.sin_addr);
+
+    printf("Client connected. With IP: %s\n", client_ip);
+
+    return client_fd;
+}
+
+void client_handler(int client_fd)
+{
+}
+
+void close_client(int client_fd)
+{
+    if (client_fd >= 0)
+    {
+        close(client_fd);
+        printf("Client disconnected.\n");
+    }
+}
+
+void close_server(int sockfd)
+{
+    if (sockfd >= 0)
+    {
+        close(sockfd);
+        printf("Server socket closed.\n");
+    }
+}
+
+void *thread_runner(void *arg)
+{
+    Queue *queue = (Queue*) arg;
+    for (;;){
+        Task task = dequeue(queue);
+
+        if (task.task_function)
+        {
+            task.task_function((void *)task.arg);
         }
+    }
+}
 
-        char *client_ip = inet_ntoa(client_addr.sin_addr);
-
-        printf("Client connected. With IP: %s\n", client_ip);
-
-        const char *http_response = 
-        "HTTP/1.1 200 OK\r\n"
-        "Content-Type: text/plain\r\n"
-        "Content-Length: 13\r\n"
-        "\r\n"
-        "Hello, world!";
-
-        send(client_fd, http_response, strlen(http_response), 0);
-
-        close(client_fd); 
+void request_dispatcher(Queue *queue)
+{
+    pthread_t threads[10];
+    for (int i = 0; i < 10; i++)
+    {
+        if (pthread_create(&threads[i], NULL, thread_runner, (void*)queue) != 0) {
+            perror("Failed to create thread");
+            exit(EXIT_FAILURE);
+        }
     }
 }
