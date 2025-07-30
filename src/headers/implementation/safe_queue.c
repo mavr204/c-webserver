@@ -1,4 +1,4 @@
-#include "headers/safe_queue.h"
+#include "safe_queue.h"
 
 Queue* create_queue() {
     Queue* queue = (Queue*)malloc(sizeof(Queue));
@@ -12,7 +12,7 @@ Queue* create_queue() {
 }
 
 bool is_empty(Queue* queue) {
-    
+
     return queue->front == queue->rear;
 }
 

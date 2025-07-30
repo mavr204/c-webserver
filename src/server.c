@@ -5,7 +5,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
-#include "./src/headers/safe_queue.h"
+#include "safe_queue.h"
 
 #define PORT 8080
 #define BACKLOG 5
@@ -13,14 +13,18 @@
 int get_socket();
 void start_server(int sockfd);
 int get_client(int sockfd);
-void client_handler(int client_fd);
+void* client_handler(void* arg);
 void close_client(int client_fd);
 void close_server(int sockfd);
+char* read_file(const char* filename, size_t* length);
+void request_dispatcher(Queue *queue);
 
 int sockfd;
+
 int main()
 {
     Queue *queue = create_queue();
+    request_dispatcher(queue);
     int client_fd = -1;
     sockfd = get_socket();
     start_server(sockfd);
@@ -32,6 +36,15 @@ int main()
         {
             continue;
         }
+        //=========================================================review=====================================================
+        int* fd_ptr = malloc(sizeof(int));
+        *fd_ptr = client_fd;
+        Task* task = (Task *)malloc(sizeof(Task));
+        task->client_fd = client_fd;
+        task->task_function = client_handler;
+        task->arg = (void*)fd_ptr;
+        enqueue(queue, *task);
+        free(task);
     }
 }
 
@@ -89,8 +102,36 @@ int get_client(int sockfd)
     return client_fd;
 }
 
-void client_handler(int client_fd)
+//=========================================================review=====================================================
+void* client_handler(void* arg)
 {
+    int client_fd = *(int*) arg;
+    free(arg);
+
+    size_t length;
+    char* response = read_file("/home/mav204/Documents/programs/http-server/web/index.html", &length);
+
+     if (!response) {
+        perror("Failed to read index.html");
+        close(client_fd);
+        return NULL;
+    }
+
+    char header[256];
+    snprintf(header, sizeof(header),
+             "HTTP/1.1 200 OK\r\n"
+             "Content-Type: text/html\r\n"
+             "Content-Length: %zu\r\n"
+             "Connection: close\r\n\r\n",
+             length);
+
+    send(client_fd, header, strlen(header), 0);
+    send(client_fd, response, length, 0);
+
+    free(response);
+    close(client_fd);
+
+    return NULL;
 }
 
 void close_client(int client_fd)
@@ -113,13 +154,14 @@ void close_server(int sockfd)
 
 void *thread_runner(void *arg)
 {
-    Queue *queue = (Queue*) arg;
-    for (;;){
+    Queue *queue = (Queue *)arg;
+    for (;;)
+    {
         Task task = dequeue(queue);
 
         if (task.task_function)
         {
-            task.task_function((void *)task.arg);
+            task.task_function(task.arg);
         }
     }
 }
@@ -129,9 +171,29 @@ void request_dispatcher(Queue *queue)
     pthread_t threads[10];
     for (int i = 0; i < 10; i++)
     {
-        if (pthread_create(&threads[i], NULL, thread_runner, (void*)queue) != 0) {
+        if (pthread_create(&threads[i], NULL, thread_runner, (void *)queue) != 0)
+        {
             perror("Failed to create thread");
             exit(EXIT_FAILURE);
         }
     }
+}
+
+//====================================================================review===========================================
+
+char* read_file(const char* filename, size_t* length){
+    FILE* file = fopen(filename, "r");
+
+    if(!file) return NULL;
+
+    fseek(file, 0, SEEK_END);
+    *length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* content = malloc(*length + 1);
+    fread(content, 1, *length, file);
+    content[*length] = '\0';
+    fclose(file);
+
+    return content;
 }

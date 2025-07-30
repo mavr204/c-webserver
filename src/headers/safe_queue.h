@@ -9,8 +9,9 @@
 #define MAX_QUEUE_SIZE 100
 
 typedef struct Task{
-    void (*task_function)(void*);
+    void* (*task_function)(void*);
     void* arg;
+    int client_fd;
 } Task;
 
 typedef struct {
