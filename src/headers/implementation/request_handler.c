@@ -1,25 +1,36 @@
 #include "request_handler.h"
 
-void request_handler(int client_fd, Queue *queue, void* (*function)(void*))
+void request_handler(int client_fd, Queue *queue)
 {
-    int *fd_ptr = malloc(sizeof(int));
-    *fd_ptr = client_fd;
+    Context *ctx = malloc(sizeof(Context));
+    ctx->fd = client_fd;
+    ctx->page = route_table[1].page;
 
     Task *task = malloc(sizeof(Task));
     task->client_fd = client_fd;
-    task->task_function = function;
-    task->arg = (void *)fd_ptr;
+    task->task_function = serve_page;
+    task->arg = (void *)ctx;
 
     enqueue(queue, task);
 }
 
-void *serve_home(void *arg)
-{
-    int client_fd = *(int *)arg;
-    free(arg);
+// void request_handler(int client_fd, Queue *queue)
+// {
+//     Context *ctx = malloc(sizeof(Context));
+//     ctx->fd = client_fd;
+
+    
+// }
+
+void *serve_page(void *arg)
+{   
+    Context *ctx = (Context*)arg;
+    int client_fd = ctx->fd;
+    const char *PAGE = ctx->page;
+
 
     size_t length;
-    char *response = read_file("/home/mav204/Documents/programs/http-server/web/index.html", &length);
+    char *response = read_file(PAGE, &length);
 
     if (!response)
     {
@@ -43,4 +54,21 @@ void *serve_home(void *arg)
     close(client_fd);
 
     return NULL;
+}
+
+char* read_file(const char* filename, size_t* length){
+    FILE* file = fopen(filename, "r");
+
+    if(!file) return NULL;
+
+    fseek(file, 0, SEEK_END);
+    *length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char* content = malloc(*length + 1);
+    fread(content, 1, *length, file);
+    content[*length] = '\0';
+    fclose(file);
+
+    return content;
 }

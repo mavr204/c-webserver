@@ -46,6 +46,8 @@ int main()
         // task->arg = (void*)fd_ptr;
         // enqueue(queue, task);
         // free(task);
+
+        request_handler(client_fd, queue);
     }
 }
 
@@ -153,20 +155,3 @@ void thread_pool_init(Queue *queue)
 }
 
 //====================================================================review===========================================
-
-char* read_file(const char* filename, size_t* length){
-    FILE* file = fopen(filename, "r");
-
-    if(!file) return NULL;
-
-    fseek(file, 0, SEEK_END);
-    *length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char* content = malloc(*length + 1);
-    fread(content, 1, *length, file);
-    content[*length] = '\0';
-    fclose(file);
-
-    return content;
-}
