@@ -17,14 +17,14 @@ void* client_handler(void* arg);
 void close_client(int client_fd);
 void close_server(int sockfd);
 char* read_file(const char* filename, size_t* length);
-void request_dispatcher(Queue *queue);
+void thread_pool_init(Queue *queue);
 
 int sockfd;
 
 int main()
 {
     Queue *queue = create_queue();
-    request_dispatcher(queue);
+    thread_pool_init(queue);
     int client_fd = -1;
     sockfd = get_socket();
     start_server(sockfd);
@@ -166,7 +166,7 @@ void *thread_runner(void *arg)
     }
 }
 
-void request_dispatcher(Queue *queue)
+void thread_pool_init(Queue *queue)
 {
     pthread_t threads[10];
     for (int i = 0; i < 10; i++)
