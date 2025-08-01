@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include "safe_queue.h"
+#include "request_handler.h"
 
 #define PORT 8080
 #define BACKLOG 5
@@ -13,10 +14,9 @@
 int get_socket();
 void start_server(int sockfd);
 int get_client(int sockfd);
-void* client_handler(void* arg);
 void close_client(int client_fd);
 void close_server(int sockfd);
-char* read_file(const char* filename, size_t* length);
+
 void thread_pool_init(Queue *queue);
 
 int sockfd;
@@ -36,15 +36,8 @@ int main()
         {
             continue;
         }
-        //=========================================================review=====================================================
-        int* fd_ptr = malloc(sizeof(int));
-        *fd_ptr = client_fd;
-        Task* task = (Task *)malloc(sizeof(Task));
-        task->client_fd = client_fd;
-        task->task_function = client_handler;
-        task->arg = (void*)fd_ptr;
-        enqueue(queue, *task);
-        free(task);
+
+        request_handler(client_fd, queue);
     }
 }
 
@@ -102,38 +95,6 @@ int get_client(int sockfd)
     return client_fd;
 }
 
-//=========================================================review=====================================================
-void* client_handler(void* arg)
-{
-    int client_fd = *(int*) arg;
-    free(arg);
-
-    size_t length;
-    char* response = read_file("/home/mav204/Documents/programs/http-server/web/index.html", &length);
-
-     if (!response) {
-        perror("Failed to read index.html");
-        close(client_fd);
-        return NULL;
-    }
-
-    char header[256];
-    snprintf(header, sizeof(header),
-             "HTTP/1.1 200 OK\r\n"
-             "Content-Type: text/html\r\n"
-             "Content-Length: %zu\r\n"
-             "Connection: close\r\n\r\n",
-             length);
-
-    send(client_fd, header, strlen(header), 0);
-    send(client_fd, response, length, 0);
-
-    free(response);
-    close(client_fd);
-
-    return NULL;
-}
-
 void close_client(int client_fd)
 {
     if (client_fd >= 0)
@@ -157,11 +118,12 @@ void *thread_runner(void *arg)
     Queue *queue = (Queue *)arg;
     for (;;)
     {
-        Task task = dequeue(queue);
+        Task *task = dequeue(queue);
 
-        if (task.task_function)
+        if (task && task->task_function)
         {
-            task.task_function(task.arg);
+            task->task_function(task->arg);
+            destroy_task(task);
         }
     }
 }
@@ -177,23 +139,4 @@ void thread_pool_init(Queue *queue)
             exit(EXIT_FAILURE);
         }
     }
-}
-
-//====================================================================review===========================================
-
-char* read_file(const char* filename, size_t* length){
-    FILE* file = fopen(filename, "r");
-
-    if(!file) return NULL;
-
-    fseek(file, 0, SEEK_END);
-    *length = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    char* content = malloc(*length + 1);
-    fread(content, 1, *length, file);
-    content[*length] = '\0';
-    fclose(file);
-
-    return content;
 }

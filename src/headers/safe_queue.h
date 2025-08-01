@@ -15,7 +15,7 @@ typedef struct Task{
 } Task;
 
 typedef struct {
-    Task tasks[MAX_QUEUE_SIZE];
+    Task *tasks[MAX_QUEUE_SIZE];
     int front;
     int rear;
     pthread_mutex_t queue_lock;
@@ -24,8 +24,9 @@ typedef struct {
 
 Queue* create_queue();
 bool is_empty(Queue* queue);
-void enqueue(Queue* queue, Task item);
-Task dequeue(Queue* queue);
+void enqueue(Queue* queue, Task *item);
+Task *dequeue(Queue* queue);
 void destroy_queue(Queue* queue);
+void destroy_task(Task *task);
 
 #endif
