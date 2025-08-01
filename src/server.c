@@ -16,6 +16,7 @@ void start_server(int sockfd);
 int get_client(int sockfd);
 void close_client(int client_fd);
 void close_server(int sockfd);
+
 void thread_pool_init(Queue *queue);
 
 int sockfd;
