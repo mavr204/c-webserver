@@ -16,7 +16,7 @@ bool is_empty(Queue* queue) {
     return queue->front == queue->rear;
 }
 
-void enqueue(Queue* queue, Task item) {
+void enqueue(Queue* queue, Task *item) {
     pthread_mutex_lock(&queue->queue_lock);
     
     if ((queue->rear +1) % MAX_QUEUE_SIZE == queue->front) {
@@ -28,17 +28,17 @@ void enqueue(Queue* queue, Task item) {
     queue->rear = (queue->rear +1) % MAX_QUEUE_SIZE;
     pthread_cond_signal(&queue->queue_occupancy);
     pthread_mutex_unlock(&queue->queue_lock);
-    printf("Enqueued item: %d\n", item);
+    printf("Enqueued client: %d\n", item->client_fd);
 }
 
-Task dequeue(Queue* queue){
+Task *dequeue(Queue* queue){
     pthread_mutex_lock(&queue->queue_lock);
 
     while (is_empty(queue)) {
         pthread_cond_wait(&queue->queue_occupancy, &queue->queue_lock);
     }
 
-    Task item = queue->tasks[queue->front];
+    Task *item = queue->tasks[queue->front];
     printf("Dequeued item: %d\n", item);  
     queue->front = (queue->front +1) % MAX_QUEUE_SIZE;
     pthread_mutex_unlock(&queue->queue_lock);
@@ -48,4 +48,11 @@ Task dequeue(Queue* queue){
 void destroy_queue(Queue* queue) {
     free(queue);
     printf("Queue destroyed.\n");
+}
+
+void destroy_task(Task *task){
+    if (task){
+        free(task->arg);
+        free(task);
+    }
 }
