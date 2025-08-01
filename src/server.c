@@ -14,10 +14,8 @@
 int get_socket();
 void start_server(int sockfd);
 int get_client(int sockfd);
-// void* client_handler(void* arg);
 void close_client(int client_fd);
 void close_server(int sockfd);
-char* read_file(const char* filename, size_t* length);
 void thread_pool_init(Queue *queue);
 
 int sockfd;
@@ -37,15 +35,6 @@ int main()
         {
             continue;
         }
-        //=========================================================review=====================================================
-        // int* fd_ptr = malloc(sizeof(int));
-        // *fd_ptr = client_fd;
-        // Task* task = (Task *)malloc(sizeof(Task));
-        // task->client_fd = client_fd;
-        // task->task_function = serve_home;
-        // task->arg = (void*)fd_ptr;
-        // enqueue(queue, task);
-        // free(task);
 
         request_handler(client_fd, queue);
     }
@@ -105,9 +94,6 @@ int get_client(int sockfd)
     return client_fd;
 }
 
-//=========================================================review=====================================================
-
-
 void close_client(int client_fd)
 {
     if (client_fd >= 0)
@@ -153,5 +139,3 @@ void thread_pool_init(Queue *queue)
         }
     }
 }
-
-//====================================================================review===========================================

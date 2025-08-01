@@ -6,9 +6,12 @@
 #include <string.h>
 #include "safe_queue.h"
 
+#define PAYLOAD_BUFFER_SIZE (8*1024)
+
 void* serve_page(void* arg);
 void request_handler(int client_fd, Queue *queue);
 char* read_file(const char* filename, size_t* length);
+const char *get_page(char *method, char *path);
 
 #define HOME_PAGE "/home/mav204/Documents/programs/http-server/web/index.html"
 #define PAGE_404 "/home/mav204/Documents/programs/http-server/web/404.html"
